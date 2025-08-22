@@ -89,7 +89,7 @@ class SimpleAPI(BaseHTTPRequestHandler):
             self._set_headers(404)
             self.wfile.write(json.dumps({"error": "Rota não encontrada"}).encode())
 
-def run(server_class=HTTPServer, handler_class=SimpleAPI, port=8000):
+def run(server_class=HTTPServer, handler_class=SimpleAPI, port=80):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     print(f"Servidor rodando em http://localhost:{port}")
