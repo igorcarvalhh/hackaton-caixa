@@ -47,12 +47,8 @@ python app.py
 ```
 
 ## 🖼️ Screenshots
-### Cadastro de Produto
-![copy_5B662C69-54BA-469B-88B9-2C8EA4A17756](https://github.com/user-attachments/assets/14b02fe5-17a7-4e15-a1d7-e53b588d0019)
-
-### Listagem de Produtos
-
-### Simulação
+<img src="https://github.com/user-attachments/assets/14b02fe5-17a7-4e15-a1d7-e53b588d0019" alt="Alt Text" height="600">
+<img src="https://github.com/user-attachments/assets/60213cca-74eb-4842-9bf7-bc37099159b7" alt="Alt Text" height="600">
 
 ## 👨‍💻 Autor
 
