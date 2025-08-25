@@ -26,8 +26,8 @@ Os detalhes completos estão descritos no arquivo [desafio.md](./desafio.md).
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/<seu-usuario>/<nome-do-repo>.git
-cd <nome-do-repo>
+git clone https://github.com/igorcarvalhh/hackaton-caixa.git
+cd hackaton-caixa
 ```
 
 ### 2. Executar o Front-end
@@ -43,7 +43,7 @@ Abra no celular via Expo Go ou no emulador Android/iOS.
 ```
 cd api
 pip install -r requirements.txt
-uvicorn main:app --reload
+python app.py
 ```
 
 ## 🖼️ Screenshots
