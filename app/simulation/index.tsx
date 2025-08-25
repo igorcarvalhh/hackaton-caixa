@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ProductCard } from '../../components/ProductCard';
 import { api } from '../../services/api';
 
@@ -41,6 +41,16 @@ export default function ProductsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.accountInfo}>
+        <Image
+          source={require('../../assets/images/logo.png')} // caminho da sua imagem PNG
+          style={styles.accountImage}
+        />
+        <View style={styles.accountText}>
+          <Text style={styles.accountType}>Conta Corrente PF</Text>
+          <Text style={styles.accountDetails}>Ag. 1234  CC. 123456789-0</Text>
+        </View>
+      </View>
       <View style={styles.conatiner}>
         <View style={styles.headerContainer}>
           <Text style={styles.header}>
@@ -89,5 +99,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  accountInfo: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: "#005aa6",
+    flexDirection: 'row',
+    alignItems: 'center' // alinha verticalmente a imagem e o texto
+  },
+  accountImage: {
+    width: 32,
+    height: 32,
+    marginRight: 12, // espaço entre a imagem e o texto
+    resizeMode: 'contain',
+  },
+  accountText: {
+    flex: 1, // ocupa o restante do espaço disponível
+  },
+  accountType: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "CAIXAStd-Regular"
+  },
+  accountDetails: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "CAIXAStd-Regular"
   },
 });

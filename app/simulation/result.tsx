@@ -1,181 +1,232 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { api } from '../../services/api'; // axios configurado
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { api } from "../../services/api";
 
-type Props = {
-  route?: {
-    params: {
-      nome: string;
-      valor: number;
-      prazo: number;
-      taxa: number;
-    };
-  };
+// ===== Tipagens =====
+type MemoriaCalculoItem = {
+  mes: number;
+  juros: number;
+  amortizacao: number;
+  saldo: number;
 };
 
-
-const calculateSimulation = (valor: number, prazo: number, taxaAnual: number) => {
-  taxaAnual = taxaAnual / 100;
-  const taxaMensal = Math.pow(1 + taxaAnual, 1 / 12) - 1;
-  const pmt = valor * (taxaMensal / (1 - Math.pow(1 + taxaMensal, -prazo)));
-  const total = pmt * prazo;
-
-  let saldo = valor;
-  const memoria: {
-    mes: number;
-    juros: number;
-    amortizacao: number;
-    saldo: number;
-  }[] = [];
-
-  for (let mes = 1; mes <= prazo; mes++) {
-    const juros = saldo * taxaMensal;
-    const amortizacao = pmt - juros;
-    saldo -= amortizacao;
-    memoria.push({
-      mes,
-      juros,
-      amortizacao,
-      saldo: saldo > 0 ? saldo : 0,
-    });
-  }
-
-  return {
-    taxaMensal: taxaMensal * 100,
-    pmt,
-    total,
-    memoria,
+type SimulacaoResult = {
+  memoria_de_calculo: MemoriaCalculoItem[];
+  parcela_mensal: number;
+  prazo: number;
+  produto: {
+    id: number;
+    nome: string;
+    prazo: string;
+    taxa: string;
   };
+  taxa_efetiva_mensal: number;
+  valor_solicitado: number;
+  valor_total_com_juros: number;
 };
 
-export default function SimulationResultScreen({ route }: Props) {
-  const nome = route?.params?.nome || 'Empréstimo Pessoal';
-  const valor = route?.params?.valor || 10000;
-  const prazo = route?.params?.prazo || 12;
-  const taxa = route?.params?.taxa || 11.78;
+// ===== Utils =====
+const LANG = "pt-BR";
+const CURRENCY = "BRL";
 
-  const [result, setResult] = useState<{
-    taxaMensal: number;
-    pmt: number;
-    total: number;
-    memoria: { mes: number; juros: number; amortizacao: number; saldo: number }[];
-  } | null>(null);
+const formatCurrency = (value: number) =>
+  value.toLocaleString(LANG, { style: "currency", currency: CURRENCY });
+
+const formatPercentage = (value: number) => `${value.toFixed(2)}%`;
+
+// ===== Components =====
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.section}>
+    <Text style={styles.label}>{label}:</Text>
+    <Text style={styles.value}>{value}</Text>
+  </View>
+);
+
+const Feedback = ({ message }: { message: string }) => (
+  <SafeAreaView style={styles.centered}>
+    <Text>{message}</Text>
+  </SafeAreaView>
+);
+
+const Table = ({
+  headers,
+  rows,
+}: {
+  headers: string[];
+  rows: (string | number)[][];
+}) => (
+  <View style={styles.table}>
+    <View style={[styles.tableRow, styles.tableHeader]}>
+      {headers.map((header, i) => (
+        <Text key={i} style={[styles.tableCell, styles.tableHeaderText, { flex: i === 0 ? 1 : 2 }]}>
+          {header}
+        </Text>
+      ))}
+    </View>
+    {rows.map((row, i) => (
+      <View key={i} style={styles.tableRow}>
+        {row.map((cell, j) => (
+          <Text
+            key={j}
+            style={[styles.tableCell, { flex: j === 0 ? 1 : 2 }]}
+          >
+            {cell}
+          </Text>
+        ))}
+      </View>
+    ))}
+  </View>
+);
+
+// ===== Main Screen =====
+export default function SimulationResultScreen() {
+  const { id, valor, prazo } =
+    useLocalSearchParams<{ id?: string; valor?: string; prazo?: string }>();
+  const produtoId = Number(id);
+  const valorSolicitado = Number(valor);
+  const prazoMeses = Number(prazo);
+
+  const [result, setResult] = useState<SimulacaoResult | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSimulation = async () => {
       try {
-        // 🔹 Tenta chamar a API primeiro
-        const response = await api.post('/simulacao', {
-          valor,
-          prazo,
-          taxaAnual: taxa,
+        const response = await api.post<SimulacaoResult>("/simulacao", {
+          produto_id: produtoId,
+          valor: valorSolicitado,
+          meses: prazoMeses,
         });
-
-        // 🔹 Espera que a API retorne no mesmo formato do cálculo local
         setResult(response.data);
       } catch (error) {
-        console.warn('API falhou, calculando localmente...', error);
-        Alert.alert('Aviso', 'Não foi possível conectar à API, cálculo realizado localmente.');
-        setResult(calculateSimulation(valor, prazo, taxa));
+        console.warn("Falha na API, cálculo local não implementado ainda.", error);
+        Alert.alert("Erro", "Não foi possível obter o resultado da simulação.");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchSimulation();
-  }, [valor, prazo, taxa]);
+  }, [produtoId, valorSolicitado, prazoMeses]);
 
-  if (!result) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <Text style={{ textAlign: 'center', marginTop: 40 }}>Carregando simulação...</Text>
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <Feedback message="Carregando simulação..." />;
+  if (!result) return <Feedback message="Não foi possível exibir o resultado." />;
 
-  const { taxaMensal, pmt, total, memoria } = result;
+  const {
+    produto,
+    valor_total_com_juros,
+    parcela_mensal,
+    taxa_efetiva_mensal,
+    memoria_de_calculo,
+  } = result;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.accountInfo}>
+        <Image
+          source={require("../../assets/images/logo.png")}
+          style={styles.accountImage}
+        />
+        <View style={styles.accountText}>
+          <Text style={styles.accountType}>Conta Corrente PF</Text>
+          <Text style={styles.accountDetails}>Ag. 1234  CC. 123456789-0</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Resultado da Simulação</Text>
+        <Text style={styles.subtitle}>Confira o resultado</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Produto:</Text>
-          <Text style={styles.value}>{nome}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Valor solicitado:</Text>
-          <Text style={styles.value}>R$ {valor.toFixed(2)}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Prazo:</Text>
-          <Text style={styles.value}>{prazo} meses</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Taxa efetiva mensal:</Text>
-          <Text style={styles.value}>{taxaMensal.toFixed(2)}%</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Parcela mensal:</Text>
-          <Text style={styles.value}>R$ {pmt.toFixed(2)}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Valor total com juros:</Text>
-          <Text style={styles.value}>R$ {total.toFixed(2)}</Text>
-        </View>
-
-        <Text style={[styles.title, { marginTop: 24 }]}>Memória de Cálculo</Text>
-        {memoria.map((item) => (
-          <View key={item.mes} style={styles.memoryRow}>
-            <Text style={styles.memoryText}>
-              Mês {item.mes}: Juros R$ {item.juros.toFixed(2)} | Amortização R$ {item.amortizacao.toFixed(2)} | Saldo: R$ {item.saldo.toFixed(2)}
-            </Text>
-          </View>
+        {[
+          { label: "Produto", value: produto.nome },
+          { label: "Valor solicitado", value: formatCurrency(valorSolicitado) },
+          { label: "Prazo", value: `${prazoMeses} meses` },
+          { label: "Taxa efetiva mensal", value: formatPercentage(taxa_efetiva_mensal) },
+          { label: "Parcela mensal", value: formatCurrency(parcela_mensal) },
+          { label: "Valor total com juros", value: formatCurrency(valor_total_com_juros) },
+        ].map((item, i) => (
+          <InfoRow key={i} label={item.label} value={item.value} />
         ))}
+
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+          Memória de Cálculo
+        </Text>
+
+        <Table
+          headers={["Mês", "Juros", "Amortização", "Saldo"]}
+          rows={memoria_de_calculo.map(({ mes, juros, amortizacao, saldo }) => [
+            mes,
+            formatCurrency(juros),
+            formatCurrency(amortizacao),
+            formatCurrency(saldo),
+          ])}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ===== Styles =====
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    padding: 24,
-    paddingBottom: 32,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'CAIXAStd-SemiBold',
-    color: '#22292E',
-    marginBottom: 16,
-  },
-  section: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 14,
-    color: '#64747A',
-    fontFamily: 'CAIXAStd-Regular',
-  },
-  value: {
+  safeArea: { flex: 1, backgroundColor: "#fff" },
+  container: { padding: 24, paddingBottom: 32 },
+  title: { fontSize: 20, fontFamily: "CAIXAStd-SemiBold", color: "#22292E" },
+  sectionTitle: {
     fontSize: 16,
-    fontFamily: 'CAIXAStd-SemiBold',
-    color: '#22292E',
+    fontFamily: "CAIXAStd-Regular",
+    fontWeight: "600",
+    color: "#22292E",
   },
-  memoryRow: {
-    marginBottom: 8,
+  subtitle: { fontSize: 14, marginBottom: 24, fontFamily: "CAIXAStd-Regular" },
+  section: { marginBottom: 12 },
+  label: { fontSize: 14, color: "#64747A", fontFamily: "CAIXAStd-Regular" },
+  value: { fontSize: 16, fontFamily: "CAIXAStd-SemiBold", color: "#22292E" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  accountInfo: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: "#005aa6",
+    flexDirection: "row",
+    alignItems: "center",
   },
-  memoryText: {
-    fontSize: 14,
-    fontFamily: 'CAIXAStd-Regular',
-    color: '#404B52',
+  accountImage: { width: 32, height: 32, marginRight: 12, resizeMode: "contain" },
+  accountText: { flex: 1 },
+  accountType: { color: "#fff", fontSize: 14, fontFamily: "CAIXAStd-Regular" },
+  accountDetails: { color: "#fff", fontSize: 13, fontFamily: "CAIXAStd-Regular" },
+  table: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    overflow: "hidden",
   },
-}); 
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  tableHeader: { backgroundColor: "#f3f4f6" },
+  tableCell: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    fontSize: 13,
+    fontFamily: "CAIXAStd-Regular",
+    color: "#404B52",
+  },
+  tableHeaderText: {
+    fontFamily: "CAIXAStd-SemiBold",
+    color: "#22292E",
+  },
+});

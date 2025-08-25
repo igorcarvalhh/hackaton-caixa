@@ -2,6 +2,9 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: 'https://68a857bebb882f2aa6de443c.mockapi.io',
+  baseURL: 'https://hackaton-caixa.onrender.com/',
   timeout: 5000,
+    headers: {
+      'Content-Type': 'application/json',
+    }
 });
