@@ -6,10 +6,10 @@ Os detalhes completos estão descritos no arquivo [desafio.md](./desafio.md).
 ## 📂 Estrutura do Projeto
 
 ```
-├── api/ # API em Python (FastAPI) usada para testes (publicada na Render)
-├── front/ # Aplicativo em React Native
-├── DEsafio.md # Documento com os detalhes completos do desafio
-└── README.md # Resumo do projeto
+├── api/          # API em Python usada para testes (publicada na Render)
+├── front/        # Aplicativo em React Native
+├── desafio.md    # Documento com os detalhes completos do desafio
+└── README.md     # Resumo do projeto
 ```
 
 - **API** disponível em: [https://hackaton-caixa.onrender.com](https://hackaton-caixa.onrender.com)  
