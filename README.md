@@ -48,7 +48,7 @@ python app.py
 
 ## 🖼️ Screenshots
 ### Cadastro de Produto
-![hackaton](https://github.com/user-attachments/assets/e0481f8a-f63c-4bd1-be66-1ac3c30c10f3)
+![Uploading copy_5B662C69-54BA-469B-88B9-2C8EA4A17756.gif…]()
 
 ### Listagem de Produtos
 
