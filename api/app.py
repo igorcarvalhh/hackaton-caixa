@@ -1,99 +1,86 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import json
-from urllib.parse import urlparse, parse_qs
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-# Dados em memória
+app = Flask(__name__)
+CORS(app)
+
 produtos = []
 next_id = 1
 
-class SimpleAPI(BaseHTTPRequestHandler):
-    def _set_headers(self, status=200):
-        self.send_response(status)
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
+def calcular_simulacao(produto, valor, meses):
+    taxa_anual = float(produto["taxa"])
+    meses = int(meses)
+    taxa_mensal = (1 + taxa_anual / 100) ** (1 / 12) - 1
+    parcela = valor * (taxa_mensal * (1 + taxa_mensal) ** meses) / ((1 + taxa_mensal) ** meses - 1)
+    total = parcela * meses
 
-    def do_GET(self):
-        if self.path == '/produtos':
-            self._set_headers()
-            self.wfile.write(json.dumps(produtos).encode())
-        else:
-            self._set_headers(404)
-            self.wfile.write(json.dumps({"error": "Rota não encontrada"}).encode())
+    memoria = []
+    saldo = valor
+    for mes in range(1, meses + 1):
+        juros = saldo * taxa_mensal
+        amortizacao = parcela - juros
+        saldo -= amortizacao
+        memoria.append({
+            "mes": mes,
+            "juros": round(juros, 2),
+            "amortizacao": round(amortizacao, 2),
+            "saldo": round(saldo, 2)
+        })
 
-    def do_POST(self):
-        global next_id
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length)
-        try:
-            data = json.loads(post_data)
-        except json.JSONDecodeError:
-            self._set_headers(400)
-            self.wfile.write(json.dumps({"error": "JSON inválido"}).encode())
-            return
+    return {
+        "produto": produto,
+        "valor_solicitado": valor,
+        "prazo": meses,
+        "taxa_efetiva_mensal": round(taxa_mensal * 100, 2),
+        "parcela_mensal": round(parcela, 2),
+        "valor_total_com_juros": round(total, 2),
+        "memoria_de_calculo": memoria
+    }
 
-        if self.path == '/produtos':
-            produto = {
-                "id": next_id,
-                "nome": data.get("nome"),
-                "prazo": data.get("prazo"),
-                "taxa": data.get("taxa")
-            }
-            produtos.append(produto)
-            next_id += 1
-            self._set_headers(201)
-            self.wfile.write(json.dumps(produto).encode())
+@app.route("/produtos", methods=["GET"])
+def listar_produtos():
+    return jsonify(produtos)
 
-        elif self.path == '/simulacoes':
-            produto_id = data.get("produto_id")
-            valor = data.get("valor")
-            meses = data.get("meses")
+@app.route("/produtos/<int:produto_id>", methods=["GET"])
+def buscar_produto(produto_id):
+    produto = next((p for p in produtos if p["id"] == produto_id), None)
+    if not produto:
+        return jsonify({"error": "Produto não encontrado"}), 404
+    return jsonify(produto)
 
-            produto = next((p for p in produtos if p["id"] == produto_id), None)
-            if not produto:
-                self._set_headers(404)
-                self.wfile.write(json.dumps({"error": "Produto não encontrado"}).encode())
-                return
+@app.route("/produtos", methods=["POST"])
+def criar_produto():
+    global next_id
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "JSON inválido"}), 400
 
-            taxa_anual = produto["taxa"]
-            taxa_mensal = (1 + taxa_anual / 100) ** (1 / 12) - 1
-            parcela = valor * (taxa_mensal * (1 + taxa_mensal) ** meses) / ((1 + taxa_mensal) ** meses - 1)
-            total = parcela * meses
+    produto = {
+        "id": next_id,
+        "nome": data.get("nome"),
+        "prazo": data.get("prazo"),
+        "taxa": data.get("taxa")
+    }
+    produtos.append(produto)
+    next_id += 1
+    return jsonify(produto), 201
 
-            memoria = []
-            saldo = valor
-            for mes in range(1, meses + 1):
-                juros = saldo * taxa_mensal
-                amortizacao = parcela - juros
-                saldo -= amortizacao
-                memoria.append({
-                    "mes": mes,
-                    "juros": round(juros, 2),
-                    "amortizacao": round(amortizacao, 2),
-                    "saldo": round(saldo, 2)
-                })
+@app.route("/simulacao", methods=["POST"])
+def simular_emprestimo():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "JSON inválido"}), 400
 
-            resultado = {
-                "produto": produto,
-                "valor_solicitado": valor,
-                "prazo": meses,
-                "taxa_efetiva_mensal": round(taxa_mensal * 100, 2),
-                "parcela_mensal": round(parcela, 2),
-                "valor_total_com_juros": round(total, 2),
-                "memoria_de_calculo": memoria
-            }
+    produto_id = data.get("produto_id")
+    valor = data.get("valor")
+    meses = data.get("meses")
 
-            self._set_headers()
-            self.wfile.write(json.dumps(resultado).encode())
+    produto = next((p for p in produtos if p["id"] == produto_id), None)
+    if not produto:
+        return jsonify({"error": "Produto não encontrado"}), 404
 
-        else:
-            self._set_headers(404)
-            self.wfile.write(json.dumps({"error": "Rota não encontrada"}).encode())
+    resultado = calcular_simulacao(produto, valor, meses)
+    return jsonify(resultado)
 
-def run(server_class=HTTPServer, handler_class=SimpleAPI, port=80):
-    server_address = ('', port)
-    httpd = server_class(server_address, handler_class)
-    print(f"Servidor rodando em http://localhost:{port}")
-    httpd.serve_forever()
-
-if __name__ == '__main__':
-    run()
+if __name__ == "__main__":
+    app.run(debug=True, port=80)
